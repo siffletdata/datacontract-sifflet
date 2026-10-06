@@ -5,7 +5,9 @@ description = "Export an ODCS data contract to Sifflet monitors as code."
 license = "MIT"
 readme = "README.md"
 authors = [
-    { name = "Fatoumata Dansokho", email = "fatoumata.dansokho@siffletdata.com" }
+    { name = "Fatoumata Dansokho", email = "fatoumata.dansokho@siffletdata.com" },
+    { name = "Antoine lefebvre", email = "antoine.lefebvre@siffletdata.com" },
+    { name = "Oriane Martin", email = "oriane.martin@siffletdata.com" }
 ]
 # No "License :: OSI Approved :: MIT License" classifier: PEP 639 makes the SPDX
 # `license` expression above and the License classifiers mutually exclusive, and
