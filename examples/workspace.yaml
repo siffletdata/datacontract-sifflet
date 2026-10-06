@@ -1,0 +1,9 @@
+kind: Workspace
+version: 1
+# Replace this id with the one from `sifflet code workspace init` before applying
+# the workspace to a real tenant.
+id: 7c2a9e14-6b38-4f01-8d55-1a0e3c7b9d42
+name: Orders
+description: Monitors exported from orders.odcs.yaml.
+include:
+  - monitors/*.yaml
