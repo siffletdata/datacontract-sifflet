@@ -538,7 +538,7 @@ def _build_quality_monitor(
                 "sql": prepare_query(quality.query or "", context.dataset["name"], field, context.server),
             }
         else:
-            parameters = _library_parameters(quality, prop, friendly_id)
+            parameters = _library_parameters(quality, prop, context.schema, friendly_id)
         _attach_threshold(parameters, quality, quality_sifflet_props, friendly_id, kind == "sql")
     except SkipRule as error:
         logger.warning(f"Rule {friendly_id}: {error.reason}; rule skipped.")
@@ -608,11 +608,13 @@ def _quality_friendly_id(
     return _join_id(*parts), False
 
 
-def _library_parameters(quality, prop, friendly_id) -> dict:
+def _library_parameters(quality, prop, schema, friendly_id) -> dict:
     """Map an ODCS library metric to Sifflet monitor parameters, without the threshold.
 
-    Raises SkipRule for a metric that has no Sifflet equivalent at the rule's level, and
-    for an invalidValues rule that needs exactly one of a ``validValues`` list or a ``pattern``.
+    Raises SkipRule for a metric that has no Sifflet equivalent at the rule's level, for
+    an invalidValues rule that needs exactly one of a ``validValues`` list or a ``pattern``,
+    and for a table-level duplicateValues rule whose ``arguments.properties`` match no
+    schema property.
     """
     metric = _metric_name(quality)
     arguments = quality.arguments if isinstance(quality.arguments, dict) else {}
@@ -651,9 +653,13 @@ def _library_parameters(quality, prop, friendly_id) -> dict:
             return {"kind": "FieldDuplicates", "field": field}
     else:
         if metric == "duplicateValues":
-            columns = arguments.get("properties")
-            if isinstance(columns, list) and columns:
-                return {"kind": "FieldDuplicates", "field": list(columns)}
+            fields_names = arguments.get("properties")
+            if isinstance(fields_names, list) and fields_names:
+                # arguments.get("properties") lists contract column names; the monitor must reference physical columns.
+                return {
+                    "kind": "FieldDuplicates",
+                    "field": _resolve_physical_column_names(schema, fields_names, friendly_id),
+                }
             return {"kind": "RowDuplicates"}
         if metric == "rowCount":
             if _is_percent(quality):
@@ -662,6 +668,26 @@ def _library_parameters(quality, prop, friendly_id) -> dict:
                 )
             return {"kind": "Volume"}
     raise SkipRule(f"metric '{metric}' is not supported at {level} level")
+
+
+def _resolve_physical_column_names(schema, column_names, friendly_id) -> list[str]:
+    """Physical names of the columns named in ``column_names``.
+
+    Each entry is a column ``name``. The result is that column's ``physicalName``,
+    or its ``name`` when no physical name is set. Unknown names are ignored, with a
+    warning. Raises SkipRule when none remain.
+    """
+    schema_columns = {column.name: column for column in schema.properties or [] if column.name}
+    resolved_columns = [schema_columns.get(column_name) for column_name in column_names]
+    physical_names = [_physical_name(column) for column in resolved_columns if column is not None]
+    unknown_column_names = [
+        str(column_name) for column_name, resolved_column in zip(column_names, resolved_columns) if resolved_column is None
+    ]
+    if unknown_column_names:
+        logger.warning(f"Rule {friendly_id}: unknown properties in arguments.properties ignored: {', '.join(unknown_column_names)}.")
+    if not physical_names:
+        raise SkipRule("duplicateValues properties do not match any schema property")
+    return physical_names
 
 
 def _field_nulls(quality, field) -> dict:

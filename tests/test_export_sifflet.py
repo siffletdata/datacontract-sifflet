@@ -370,11 +370,53 @@ def test_library_rules_map_to_sifflet_parameters(caplog):
     assert by_id["code_pattern"]["threshold"]["max"] == 2
     assert by_id["orders_status_library_duplicate_values_eq_0"]["field"] == "STATUS"
     assert "arguments.properties is ignored" in caplog.text
-    assert by_id["orders_library_duplicate_values_eq_0"]["field"] == ["status", "region"]
+    assert by_id["orders_library_duplicate_values_eq_0"]["field"] == ["STATUS", "region"]
     assert by_id["orders_library_duplicate_values_gt_0"]["kind"] == "RowDuplicates"
     assert "only NULL values are monitored" in caplog.text
     assert "metric 'rowCount' is not supported at property level" in caplog.text
     assert "metric 'nullValues' is not supported at table level" in caplog.text
+
+
+def test_table_duplicate_values_drop_unknown_properties(caplog):
+    schema = """
+  - name: orders
+    properties:
+      - name: status
+        physicalName: STATUS
+        logicalType: string
+      - name: region
+        logicalType: string
+    quality:
+      - type: library
+        metric: duplicateValues
+        mustBe: 0
+        arguments:
+          properties: [status, missing, region]
+"""
+    props = "customProperties:\n  - property: sifflet.implicitMonitors\n    value: false\n"
+    _, documents = _export(_contract(schema, props=props))
+    assert documents[0]["parameters"]["field"] == ["STATUS", "region"]
+    assert "unknown properties in arguments.properties ignored: missing" in caplog.text
+
+
+def test_table_duplicate_values_with_only_unknown_properties_is_skipped(caplog):
+    schema = """
+  - name: orders
+    properties:
+      - name: status
+        logicalType: string
+    quality:
+      - type: library
+        metric: duplicateValues
+        mustBe: 0
+        arguments:
+          properties: [missing]
+"""
+    props = "customProperties:\n  - property: sifflet.implicitMonitors\n    value: false\n"
+    _, documents = _export(_contract(schema, props=props))
+    assert documents == []
+    assert "duplicateValues properties do not match any schema property" in caplog.text
+    assert "rule skipped" in caplog.text
 
 
 def test_row_duplicates_use_a_distinct_friendly_id():

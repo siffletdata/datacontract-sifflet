@@ -87,14 +87,14 @@ Library metrics map as follows. A metric with no equivalent at that level is ski
 | Metric | Level | Monitor |
 |---|---|---|
 | `rowCount` | table | `Volume` |
-| `duplicateValues` | table, with `arguments.properties` | `FieldDuplicates` on those columns |
+| `duplicateValues` | table, with `arguments.properties` | `FieldDuplicates` on the physical names of those properties |
 | `duplicateValues` | table, without columns | `RowDuplicates` |
 | `nullValues`, `missingValues` | column | `FieldNulls` (`Percentage` when `unit` is `percent`) |
 | `invalidValues` with `validValues` | column | `FieldInList` |
 | `invalidValues` with `pattern` | column | `FieldFormat` regex |
 | `duplicateValues` | column | `FieldDuplicates` on that column |
 
-`missingValues` only monitors NULL. Listed placeholders such as `""` are ignored, with a warning. `arguments.properties` on a column-level `duplicateValues` rule is ignored.
+`missingValues` only monitors NULL. Listed placeholders such as `""` are ignored, with a warning. `arguments.properties` on a column-level `duplicateValues` rule is ignored. On a table-level rule, each name is a schema property: the monitor uses its `physicalName`, or its `name`. Unknown names are ignored, with a warning. If none match, the rule is skipped.
 
 A rule with no operator is skipped, except a SQL rule, which is exported without a threshold so Sifflet's dynamic threshold applies, and the kinds that already alert on any violation (`FieldInList`, `FieldFormat`, `FieldDuplicates`) when the bound is exactly zero or absent.
 
