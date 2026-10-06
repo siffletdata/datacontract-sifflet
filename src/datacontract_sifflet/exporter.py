@@ -588,8 +588,9 @@ def _quality_friendly_id(
     """The rule's friendlyId, and whether the user gave it.
 
     The id is ``sifflet.friendlyId``, else ``id``, else ``name`` in snake case. With none
-    of these it is computed from the schema, property, metric, and operator, and the
-    second value is False so a later collision skips the rule instead of failing.
+    of these it is computed from the schema, property, metric, and operator. The bound
+    value is left out, so changing the threshold keeps the id. The second value is False
+    so a later collision skips the rule instead of failing.
     """
     if _SiffletCustomProperty.FRIENDLY_ID in quality_sifflet_props:
         return str(quality_sifflet_props[_SiffletCustomProperty.FRIENDLY_ID]), True
@@ -600,11 +601,8 @@ def _quality_friendly_id(
 
     parts = [schema_name, column_name, "library", metric]
     for operator, token in _OPERATORS.items():
-        value = getattr(quality, operator)
-        if value is not None:
+        if getattr(quality, operator) is not None:
             parts.append(token)
-            bounds = value if operator == "mustBeBetween" else [value]
-            parts.extend(_num(bound) for bound in bounds)
     return _join_id(*parts), False
 
 
@@ -996,7 +994,7 @@ def _monitor_signature(parameters: dict) -> tuple:
 
 
 def _num(value) -> str:
-    """Format a bound for names and IDs, dropping the ``.0`` of whole floats."""
+    """Format a bound for monitor names, dropping the ``.0`` of whole floats."""
     if isinstance(value, float) and value.is_integer():
         return str(int(value))
     return str(value)

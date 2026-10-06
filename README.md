@@ -102,7 +102,7 @@ A rule with no operator is skipped, except a SQL rule, which is exported without
 
 - `type: custom` (including `engine: sifflet`) and `type: text` are not exported.
 - A rule `id` or `name` is copied to `friendlyId` without the table name. Sifflet requires a `friendlyId` to be unique on a dataset, so give every rule on the same table its own `id`. The same `id` on two different tables is allowed.
-- A computed id includes the threshold, for example `orders_library_row_count_gt_1000`. Changing the threshold changes the id, so Sifflet deletes the monitor and creates a new one, and the run history is lost. Set `sifflet.friendlyId` or `id` when the threshold may change.
+- A computed id includes the operator but not its bound, for example `orders_library_row_count_gt`. Changing the bound keeps the monitor and its run history. Two rules with the same operator on the same table share that id, so the later one is skipped. Set `sifflet.friendlyId` or `id` to keep both.
 - Without `sifflet.datasource`, the source name is the contract's server name, such as `production`. That name usually does not match the source in Sifflet. Set `sifflet.datasource` to the source name shown in Sifflet.
 - Nested properties are not exported.
 - A SQL rule with no `sifflet.friendlyId`, `id`, or `name` is skipped.

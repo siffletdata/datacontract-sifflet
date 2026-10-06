@@ -204,8 +204,8 @@ def test_rule_and_metric_build_the_same_friendly_id():
     _, rule_docs = _export_model(_contract(schema, version="v3.0.2", props=props))
     schema = schema.replace("rule: rowCount", "metric: rowCount")
     _, metric_docs = _export(_contract(schema, version="v3.2.0", props=props))
-    assert [doc["friendlyId"] for doc in rule_docs] == ["orders_library_row_count_gt_1"]
-    assert [doc["friendlyId"] for doc in metric_docs] == ["orders_library_row_count_gt_1"]
+    assert [doc["friendlyId"] for doc in rule_docs] == ["orders_library_row_count_gt"]
+    assert [doc["friendlyId"] for doc in metric_docs] == ["orders_library_row_count_gt"]
 
 
 def test_unnamed_library_rules_compute_the_friendly_id_from_metric_and_operator(caplog):
@@ -237,9 +237,9 @@ def test_unnamed_library_rules_compute_the_friendly_id_from_metric_and_operator(
     _, documents = _export(_contract(schema, props=props))
     assert [doc["friendlyId"] for doc in documents] == [
         "min_volume",
-        "orders_library_row_count_gt_1",
-        "orders_library_row_count_lt_10",
-        "orders_library_row_count_between_1_2_5",
+        "orders_library_row_count_gt",
+        "orders_library_row_count_lt",
+        "orders_library_row_count_between",
     ]
     assert "duplicate friendlyId" in caplog.text
 
@@ -358,20 +358,20 @@ def test_library_rules_map_to_sifflet_parameters(caplog):
     props = "customProperties:\n  - property: sifflet.implicitMonitors\n    value: false\n"
     _, documents = _export(_contract(schema, props=props))
     by_id = {doc["friendlyId"]: doc["parameters"] for doc in documents}
-    assert by_id["orders_status_library_null_values_lt_5"] == {
+    assert by_id["orders_status_library_null_values_lt"] == {
         "kind": "FieldNulls",
         "field": "STATUS",
         "valueMode": "Percentage",
         "threshold": {"kind": "Static", "max": 5, "isMaxInclusive": False},
     }
-    assert by_id["orders_status_library_missing_values_eq_0"]["valueMode"] == "Count"
-    assert "threshold" not in by_id["orders_status_library_invalid_values_eq_0"]
-    assert by_id["orders_status_library_invalid_values_eq_0"]["values"] == ["open", "closed"]
+    assert by_id["orders_status_library_missing_values_eq"]["valueMode"] == "Count"
+    assert "threshold" not in by_id["orders_status_library_invalid_values_eq"]
+    assert by_id["orders_status_library_invalid_values_eq"]["values"] == ["open", "closed"]
     assert by_id["code_pattern"]["threshold"]["max"] == 2
-    assert by_id["orders_status_library_duplicate_values_eq_0"]["field"] == "STATUS"
+    assert by_id["orders_status_library_duplicate_values_eq"]["field"] == "STATUS"
     assert "arguments.properties is ignored" in caplog.text
-    assert by_id["orders_library_duplicate_values_eq_0"]["field"] == ["STATUS", "region"]
-    assert by_id["orders_library_duplicate_values_gt_0"]["kind"] == "RowDuplicates"
+    assert by_id["orders_library_duplicate_values_eq"]["field"] == ["STATUS", "region"]
+    assert by_id["orders_library_duplicate_values_gt"]["kind"] == "RowDuplicates"
     assert "only NULL values are monitored" in caplog.text
     assert "metric 'rowCount' is not supported at property level" in caplog.text
     assert "metric 'nullValues' is not supported at table level" in caplog.text
@@ -524,7 +524,7 @@ def test_sifflet_enabled_false_skips_the_rule_and_implicit_monitors():
 
     kept = "customProperties:\n  - property: sifflet.implicitMonitors\n    value: false\n"
     _, documents = _export(_contract(schema, props=kept))
-    assert [doc["friendlyId"] for doc in documents] == ["orders_library_row_count_gt_1"]
+    assert [doc["friendlyId"] for doc in documents] == ["orders_library_row_count_gt"]
     assert documents[0]["name"] == "orders – row count > 1"
 
 
@@ -587,7 +587,7 @@ def test_implicit_monitors_composite_keys_and_dedup(caplog):
         "orders_order_id_required",
         "orders_email_format_email",
         "orders_email_format_regex",
-        "orders_email_library_null_values_lt_5",
+        "orders_email_library_null_values_lt",
         "orders_code_unique",
     ]
     assert "orders_email_required" not in ids
@@ -760,8 +760,8 @@ def test_fixture_exports_the_example_monitors(caplog):
     documents = list(yaml.safe_load_all(text))
     assert [doc["friendlyId"] for doc in documents] == [
         "orders_schema_change",
-        "orders_library_row_count_gt_1000",
-        "orders_library_row_count_lt_5000",
+        "orders_library_row_count_gt",
+        "orders_library_row_count_lt",
         "max_order_age",
         "orders_order_id_unique",
         "orders_customer_email_required",
