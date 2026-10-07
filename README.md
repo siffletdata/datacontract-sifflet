@@ -1,10 +1,8 @@
 # datacontract-sifflet
 
-Export an [ODCS](https://opendatacontract.org) data contract to [Sifflet monitors as code](https://docs.siffletdata.com/docs/monitors-as-code).
+Export an [ODCS](https://bitol-io.github.io/open-data-contract-standard/v3.1.0/) data contract to [Sifflet monitors as code](https://docs.siffletdata.com/docs/monitors-as-code) using [Data Contract CLI](https://cli.datacontract.com/) standards.
 
-The command reads a contract from a local path, an `http(s)` URL, or an `s3://` URL, the same way `datacontract-cli` does, and writes one YAML file of monitor documents. It does not call the Sifflet API. Apply the file with the Sifflet CLI.
-
-`datacontract export sifflet` does not load this package. Custom formats are only available through the datacontract Python library, so this package ships its own command.
+The command reads a contract from a local path, an `http(s)` URL, or an `s3://` URL, and writes one YAML file of monitor documents.
 
 ## Install
 
@@ -16,9 +14,13 @@ Requires Python 3.10â€“3.14 and `datacontract-cli` 1.x (`>=1.2,<2`).
 
 ## Export
 
+`examples/orders.odcs.yaml` is a contract you can export as Sifflet monitor as code. From `examples/`:
+
 ```bash
 datacontract-sifflet export orders.odcs.yaml --output monitors/orders.yaml
 ```
+
+Several monitors are written in that one file, separated by `---`, which is the [format the monitor schema documents](https://docs.siffletdata.com/docs/monitor-schema) for more than one monitor per file.
 
 | Option | Meaning |
 |---|---|
@@ -41,20 +43,39 @@ monitors = DataContract(data_contract_file="orders.odcs.yaml", server="productio
 
 ## Apply the monitors
 
-`examples/orders.odcs.yaml` is a contract you can export. `examples/workspace.yaml` includes `monitors/*.yaml`. From `examples/`:
+The export writes YAML on disk. Deploying it on a tenant is done with the [Sifflet CLI](https://docs.siffletdata.com/docs/cli-command-line-interface#installation). `examples/workspace.yaml` includes `monitors/*.yaml`. Its `id` is a placeholder: replace it with one from `sifflet code workspace init` before applying to a real tenant. From `examples/`:
 
 ```bash
-datacontract-sifflet export orders.odcs.yaml --output monitors/orders.yaml
 sifflet code workspace apply --file workspace.yaml
 ```
 
-Replace the workspace `id` with one from `sifflet code workspace init` before applying to a real tenant. Several monitors are written in that one file, separated by `---`, which is the [format the monitor schema documents](https://docs.siffletdata.com/docs/monitor-schema) for more than one monitor per file.
+Install, credentials, and what `apply` changes are described in [Monitors as Code](https://docs.siffletdata.com/docs/monitors-as-code).
 
 ## What is exported
 
-Library rules and SQL rules become monitors. The schema also adds implicit monitors unless you turn them off: schema change, a composite primary key, and, per column, `required`, `unique` or a single-column primary key, the `email` and `uuid` formats, and `pattern`.
+Library rules and SQL rules become monitors. Unless `sifflet.implicitMonitors` is `false`, the schema also adds implicit monitors. The schema gets a schema-change monitor, and a duplicates monitor when its primary key spans several columns. Each column gets a not-null monitor if it is `required`, a duplicates monitor if it is `unique` or a single-column primary key, a format monitor for `email` or `uuid`, and a regex monitor for `pattern`.
 
-Set `sifflet.*` custom properties on the contract, a server, a schema, a property, or a quality rule. The most specific value wins.
+Library metrics map as follows. A metric with no equivalent at that level is skipped.
+
+| Metric | Level | Monitor |
+|---|---|---|
+| `rowCount` | table | `Volume` |
+| `duplicateValues` | table, with `arguments.properties` | `FieldDuplicates` on the physical names of those properties |
+| `duplicateValues` | table, without columns | `RowDuplicates` |
+| `nullValues`, `missingValues` | column | `FieldNulls` (`Percentage` when `unit` is `percent`) |
+| `invalidValues` with `validValues` | column | `FieldInList` |
+| `invalidValues` with `pattern` | column | `FieldFormat` regex |
+| `duplicateValues` | column | `FieldDuplicates` on that column |
+
+`missingValues` only monitors NULL. Listed placeholders such as `""` are ignored, with a warning. On a table-level rule, each name is a schema property: the monitor uses its `physicalName`, or its `name`. Unknown names are ignored, with a warning. If none match, the rule is skipped.
+
+A rule with no operator is skipped, except a SQL rule, which is exported without a threshold so Sifflet's dynamic threshold applies, and the kinds that already alert on any violation (`FieldInList`, `FieldFormat`, `FieldDuplicates`) when the bound is exactly zero or absent.
+
+In a SQL query, `${object}` becomes the fully qualified table name: the server's `project`, or else `catalog`, or else `database`, then its `dataset` or else `schema`, then the table. Each part is quoted for the server's dialect. `${table}` and `${model}` stay the table name.
+
+## Sifflet custom properties
+
+Set a `sifflet.*` custom property to change how those monitors are exported: which ones to keep, which Sifflet source they run on, and their name, severity, schedule, or notifications. A property on the contract applies to every monitor. The same property on a server, a schema, a column, or a quality rule replaces it for that object only. When it is set at more than one level, the closest one wins: the quality rule, then the column, then the schema, then the contract.
 
 | Property | Where it is read | Effect |
 |---|---|---|
@@ -80,32 +101,13 @@ ODCS `severity` is used when `sifflet.severity` is not set on the rule: `info` â
 
 An ODCS `schedule` is used when `sifflet.schedule` is not set on the rule. A scheduler other than cron drops the schedule and does not fall back to an inherited one.
 
-In a SQL query, `${object}` becomes the fully qualified table name: the server's `project`, or else `catalog`, or else `database`, then its `dataset` or else `schema`, then the table. Each part is quoted for the server's dialect. `${table}` and `${model}` stay the table name.
+## Notes
 
-Library metrics map as follows. A metric with no equivalent at that level is skipped.
-
-| Metric | Level | Monitor |
-|---|---|---|
-| `rowCount` | table | `Volume` |
-| `duplicateValues` | table, with `arguments.properties` | `FieldDuplicates` on the physical names of those properties |
-| `duplicateValues` | table, without columns | `RowDuplicates` |
-| `nullValues`, `missingValues` | column | `FieldNulls` (`Percentage` when `unit` is `percent`) |
-| `invalidValues` with `validValues` | column | `FieldInList` |
-| `invalidValues` with `pattern` | column | `FieldFormat` regex |
-| `duplicateValues` | column | `FieldDuplicates` on that column |
-
-`missingValues` only monitors NULL. Listed placeholders such as `""` are ignored, with a warning. `arguments.properties` on a column-level `duplicateValues` rule is ignored. On a table-level rule, each name is a schema property: the monitor uses its `physicalName`, or its `name`. Unknown names are ignored, with a warning. If none match, the rule is skipped.
-
-A rule with no operator is skipped, except a SQL rule, which is exported without a threshold so Sifflet's dynamic threshold applies, and the kinds that already alert on any violation (`FieldInList`, `FieldFormat`, `FieldDuplicates`) when the bound is exactly zero or absent.
-
-## Limits
-
-- `type: custom` (including `engine: sifflet`) and `type: text` are not exported.
-- A rule `id` or `name` is copied to `friendlyId` without the table name. Sifflet requires a `friendlyId` to be unique on a dataset, so give every rule on the same table its own `id`. The same `id` on two different tables is allowed.
-- A computed id includes the operator but not its bound, for example `orders_library_row_count_gt`. Changing the bound keeps the monitor and its run history. Two rules with the same operator on the same table share that id, so the later one is skipped. Set `sifflet.friendlyId` or `id` to keep both.
-- Without `sifflet.datasource`, the source name is the contract's server name, such as `production`. That name usually does not match the source in Sifflet. Set `sifflet.datasource` to the source name shown in Sifflet.
+- `type: custom` and `type: text` quality types are not supported.
 - Nested properties are not exported.
+- A rule `id` or `name` is copied to `friendlyId` without the table name. Sifflet requires a `friendlyId` to be unique on a dataset, so give every rule on the same table its own `id`.
 - A SQL rule with no `sifflet.friendlyId`, `id`, or `name` is skipped.
+- Without `sifflet.datasource`, the source name is the contract's server name. Set `sifflet.datasource` to the source name shown in Sifflet.
 
 ## Development
 
