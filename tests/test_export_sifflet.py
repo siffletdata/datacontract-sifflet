@@ -1,3 +1,4 @@
+import re
 from types import SimpleNamespace
 
 import pytest
@@ -19,6 +20,9 @@ from datacontract_sifflet.exporter import (
 
 FIXTURE = "fixtures/datacontract.yaml"
 RUNNER = CliRunner()
+# Typer colors help text when GITHUB_ACTIONS is set, and the highlighter styles
+# each dash of a long option on its own, so "--server" is not one substring.
+_ANSI = re.compile(r"\x1b\[[0-9;]*m")
 
 
 def _quality(**kwargs):
@@ -816,11 +820,12 @@ def test_registration_replaces_a_bundled_sifflet_exporter():
 def test_cli_lists_the_shared_options_only(tmp_path):
     result = RUNNER.invoke(app, ["export", "--help"])
     assert result.exit_code == 0
-    assert "--server" in result.stdout
-    assert "--schema-name" in result.stdout
-    assert "--output" in result.stdout
-    assert "--debug" in result.stdout
-    assert "--datasource" not in result.stdout
+    help_text = _ANSI.sub("", result.stdout)
+    assert "--server" in help_text
+    assert "--schema-name" in help_text
+    assert "--output" in help_text
+    assert "--debug" in help_text
+    assert "--datasource" not in help_text
     exported = RUNNER.invoke(app, ["export", FIXTURE])
     assert exported.exit_code == 0
     assert "orders_schema_change" in exported.stdout
