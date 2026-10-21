@@ -478,7 +478,6 @@ wheels = [
 
 [[package]]
 name = "datacontract-sifflet"
-version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "datacontract-cli" },
