@@ -43,7 +43,8 @@ monitors = DataContract(data_contract_file="orders.odcs.yaml", server="productio
 
 ## Apply the monitors
 
-The export writes YAML on disk. Deploying it on a tenant is done with the [Sifflet CLI](https://docs.siffletdata.com/docs/cli-command-line-interface#installation). `examples/workspace.yaml` includes `monitors/*.yaml`. Its `id` is a placeholder: replace it with one from `sifflet code workspace init` before applying to a real tenant. From `examples/`:
+The export writes YAML on disk. Deploying it on a tenant is done with the [Sifflet CLI](https://docs.siffletdata.com/docs/cli-command-line-interface#installation). 
+`examples/workspace.yaml` includes `monitors/*.yaml`. Its `id` is a placeholder: replace it with one from `sifflet code workspace init` before applying to a real tenant. From `examples/`:
 
 ```bash
 sifflet code workspace apply --file workspace.yaml
