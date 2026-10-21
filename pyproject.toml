@@ -1,6 +1,7 @@
 [project]
 name = "datacontract-sifflet"
-version = "0.1.0"
+#version = "0.1.0"
+dynamic = ["version"]
 description = "Export an ODCS data contract to Sifflet monitors as code."
 license = "MIT"
 readme = "README.md"
@@ -62,8 +63,8 @@ dev = [
 ]
 
 [build-system]
-requires = ["uv_build>=0.12.3,<0.13.0"]
-build-backend = "uv_build"
+requires = ["hatchling>=1.25.0", "uv-dynamic-versioning>=0.4.0"]
+build-backend = "hatchling.build"
 
 [tool.uv]
 # yarl 1.24.0 and 1.24.1 were published to PyPI with cp310-only wheels and no
